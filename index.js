@@ -2,36 +2,38 @@ const express = require('express');
 const axios = require('axios');
 const app = express();
 
-app.get('/v/:twitch', async (req, res) => {
-  const { twitch } = req.params;
-  const { id, region } = req.query; // id = YourName#Tag
+app.get('/valorantapi/record/:user/:tag/:region/:twitch', async (req, res) => {
+  const { user, tag, region, twitch } = req.params;
 
-  if (!id || !region) {
-    return res.status(400).send("Missing id or region");
-  }
-
-  const [user, tag] = id.split('#');
-
-  if (!user || !tag) {
-    return res.status(400).send("Invalid id format. Use YourName#Tag.");
-  }
-
-  const originalUrl = `http://zabriddev.ddns.net/valorantapi/rank/${user}/${tag}/${region}/${twitch}`;
+  const originalUrl = `http://zabriddev.ddns.net/valorantapi/record/${user}/${tag}/${region}/${twitch}`;
 
   try {
     const response = await axios.get(originalUrl);
-    let data = response.data;
+    const raw = response.data;
 
-    // Modify response
-    const modified = `[VAL Rank] ${user}#${tag} (${region}) → ${data}`;
-    res.send(modified);
-  } catch (err) {
-    console.error(err);
-    res.status(500).send("Error fetching Valorant rank.");
+    // Example raw: "qtpanini is currently down -56RR ( Going: 1W - 0D - 4L, 20.00% wr ) since the stream started. ( Currently: Immortal 3 29RR )"
+
+    // Use regex to extract:
+    const lossMatch = raw.match(/Going:\s*(\d+W)\s*-\s*(\d+D)\s*-\s*(\d+L)/);
+    const rrChangeMatch = raw.match(/currently down ([+-]?\d+RR)/i);
+
+    if (lossMatch && rrChangeMatch) {
+      const [_, wins, draws, losses] = lossMatch;
+      const rrChange = rrChangeMatch[1];
+
+      const formatted = `${twitch} is currently ${wins} - ${draws} - ${losses} since the stream started and is down ${rrChange}`;
+      res.send(formatted);
+    } else {
+      // Fallback: just return the original message
+      res.send(`[unformatted fallback] ${raw}`);
+    }
+  } catch (error) {
+    console.error(error);
+    res.status(500).send("Failed to fetch or format record.");
   }
 });
 
 const port = process.env.PORT || 3000;
 app.listen(port, () => {
-  console.log(`Custom proxy server running on port ${port}`);
+  console.log(`Server running on port ${port}`);
 });
