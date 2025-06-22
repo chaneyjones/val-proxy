@@ -11,20 +11,24 @@ app.get('/valorantapi/record/:user/:tag/:region/:twitch', async (req, res) => {
     const response = await axios.get(originalUrl);
     const raw = response.data;
 
-    // Example raw: "qtpanini is currently down -56RR ( Going: 1W - 0D - 4L, 20.00% wr ) since the stream started. ( Currently: Immortal 3 29RR )"
+    // Example raw:
+    // "qtpanini is currently up 54RR ( Going: 3W - 0D - 1L, 75.00% wr ) since the stream started. ( Currently: Immortal 3 392RR )"
 
-    // Use regex to extract:
-    const lossMatch = raw.match(/Going:\s*(\d+W)\s*-\s*(\d+D)\s*-\s*(\d+L)/);
-    const rrChangeMatch = raw.match(/currently down ([+-]?\d+RR)/i);
+    // Match the "Going: xW - yD - zL"
+    const lossMatch = raw.match(/Going:\s*(\d+)W\s*-\s*(\d+)D\s*-\s*(\d+)L/i);
+
+    // Match both "currently up/down XXRR"
+    const rrChangeMatch = raw.match(/currently (up|down)\s+([+-]?\d+RR)/i);
 
     if (lossMatch && rrChangeMatch) {
       const [_, wins, draws, losses] = lossMatch;
-      const rrChange = rrChangeMatch[1];
+      const direction = rrChangeMatch[1]; // "up" or "down"
+      const rrAmount = rrChangeMatch[2];  // e.g., "54RR"
 
-      const formatted = `${twitch} is currently ${wins} - ${draws} - ${losses} since the stream started and is down ${rrChange}`;
+      const formatted = `${twitch} is currently ${direction} ${rrAmount} ( Going: ${wins}W - ${draws}D - ${losses}L ) since the stream started.`;
       res.send(formatted);
     } else {
-      // Fallback: just return the original message
+      // Fallback to the raw string if parsing fails
       res.send(`[unformatted fallback] ${raw}`);
     }
   } catch (error) {
