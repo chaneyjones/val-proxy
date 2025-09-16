@@ -50,8 +50,6 @@ Installation
 
 Clone the repository:
 
-git clone https://github.com/yourusername/valorant-proxy.git
-cd valorant-proxy
 
 
 Install dependencies:
